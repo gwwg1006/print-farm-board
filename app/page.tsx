@@ -215,6 +215,11 @@ export default function Home() {
 
 function Stat({label,value,tone="slate"}:{label:string;value:number;tone?:string}) { const colors:Record<string,string>={slate:"bg-slate-100 text-slate-900",blue:"bg-blue-50 text-blue-700",amber:"bg-amber-50 text-amber-800",green:"bg-emerald-50 text-emerald-700"}; return <div className={`min-w-0 rounded-lg px-2 py-1.5 sm:min-w-[82px] sm:rounded-xl sm:px-3 sm:py-2 ${colors[tone]}`}><div className="truncate text-[10px] font-semibold opacity-65 sm:text-xs">{label}</div><div className="text-lg font-black leading-5 sm:text-xl sm:leading-6">{value}</div></div> }
 
+function cleanFileNameToBase(name: string): string {
+  if (!name) return "";
+  return name.replace(/\.(gcode(\.3mf)?|3mf|stl|png|jpe?g|webp)$/i, "").trim() || name;
+}
+
 function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:Job;first:boolean;last:boolean;onOpen:()=>void;onStatus:(s:Status)=>void;onOperatorChange:(operator:string)=>void;onMove:(d:-1|1)=>void}) {
   const isCompleted = job.status === "completed";
   const isPrinting = job.status === "printing";
@@ -231,15 +236,21 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
             <img src={job.screenshot} alt={job.modelName} className="h-auto w-full object-cover" loading="lazy" />
           </button>
           <div className="flex items-center justify-between p-1.5 bg-white/95 border-b border-slate-100">
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1">
+            <div className="min-w-0 flex-1 space-y-0.5">
+              <div className="flex items-center gap-1 flex-wrap">
                 {job.priority === "urgent" && <span className="rounded bg-red-50 px-1 py-0.5 text-[9px] font-black text-red-600">긴급</span>}
                 {isCompleted && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-black text-emerald-700">완료</span>}
-                <h4 className="truncate text-xs font-bold text-slate-900" title={job.modelName}>{job.modelName}</h4>
+                <h4 className="truncate text-xs font-black text-slate-900" title={job.modelName}>{job.modelName}</h4>
+                {job.fileName && (
+                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono font-bold text-slate-700 border border-slate-200 truncate max-w-[140px]" title={`프린터 파일: ${job.fileName}`}>
+                    <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-0.5 rounded">GCODE</span>
+                    <span className="truncate">{job.fileName}</span>
+                  </span>
+                )}
               </div>
-              <p className="truncate text-[10px] text-slate-500">{job.customer || "고객 미지정"}</p>
+              <p className="truncate text-[10px] text-slate-500">{job.customer ? `고객: ${job.customer}` : "고객 미지정"}</p>
             </div>
-            <div className="flex shrink-0 gap-0.5" onClick={event => event.stopPropagation()}>
+            <div className="flex shrink-0 gap-0.5 ml-1" onClick={event => event.stopPropagation()}>
               <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
               <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
             </div>
@@ -280,13 +291,31 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
             {isCompleted ? <Check className="h-4 w-4 sm:h-6 sm:w-6" /> : <Box className="h-4 w-4 sm:h-6 sm:w-6" />}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-0.5 flex items-center gap-1 sm:mb-1 sm:gap-1.5">
+            <div className="mb-1 flex items-center gap-1 sm:gap-1.5">
               {job.priority === "urgent" && <span className="rounded bg-red-50 px-1 py-0.5 text-[9px] font-black text-red-600 sm:px-1.5 sm:text-[11px]">긴급</span>}
               {job.priority === "low" && <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-slate-500 sm:px-1.5 sm:text-[11px]">낮음</span>}
               {isCompleted && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-black text-emerald-700 sm:px-1.5 sm:text-[11px]">완료됨</span>}
             </div>
-            <h3 className="truncate text-xs font-extrabold sm:text-[15px]" title={job.modelName}>{job.modelName}</h3>
-            <p className="truncate text-[10px] font-medium text-slate-500 sm:text-xs">{job.customer || "고객 미지정"}</p>
+            {/* 병렬 이름 노출: 메인 모델명 & 프린터 G-code 파일명 */}
+            <div className="space-y-0.5 min-w-0">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h3 className="text-xs font-black sm:text-[14px] text-slate-900 leading-tight" title={job.modelName}>
+                  {job.modelName}
+                </h3>
+                {job.fileName && (
+                  <span
+                    className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-mono font-bold text-slate-700 border border-slate-200 truncate max-w-full"
+                    title={`프린터 파일: ${job.fileName}`}
+                  >
+                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1 rounded border border-blue-100">GCODE</span>
+                    <span className="truncate">{job.fileName}</span>
+                  </span>
+                )}
+              </div>
+              <p className="truncate text-[10px] font-medium text-slate-500 sm:text-xs">
+                {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
+              </p>
+            </div>
           </div>
           <div className="flex shrink-0 gap-0.5" onClick={event => event.stopPropagation()}>
             <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
@@ -312,10 +341,146 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
 function StatusActions({current,operator,onStatus,onOperatorChange}:{current:Status;operator:string;onStatus:(status:Status)=>void;onOperatorChange:(operator:string)=>void}) { return <div className="mt-2 space-y-2 border-t border-slate-100 pt-2 sm:mt-3 sm:pt-2.5" onClick={event=>event.stopPropagation()}><div className="grid grid-cols-3 gap-1 sm:gap-1.5">{(["waiting","printing","completed"] as Status[]).map(status => { const Icon=statusInfo[status].icon; const active=current===status; const label=status==="waiting"?"대기":status==="printing"?"출력":"완료"; return <button key={status} type="button" onClick={()=>onStatus(status)} aria-label={`${label} 상태로 변경`} aria-pressed={active} className={`flex min-h-8 items-center justify-center gap-1 rounded-md px-1 py-1 text-[10px] font-bold transition sm:min-h-9 sm:rounded-lg sm:px-2 sm:text-xs ${active?statusInfo[status].cls:"bg-slate-100 text-slate-500 hover:bg-slate-200"}`}><Icon className="h-3 w-3" /><span>{label}</span></button>; })}</div>{current!=="waiting"&&<div className="flex items-center gap-2"><span className="shrink-0 text-[10px] font-bold text-slate-500 sm:text-xs">작업자</span><Select value={operator || "unassigned"} onValueChange={value=>onOperatorChange(value==="unassigned"?"":value)}><SelectTrigger aria-label="작업자 선택" className="h-8 flex-1 text-xs sm:h-9"><SelectValue placeholder="작업자를 선택하세요" /></SelectTrigger><SelectContent><SelectItem value="unassigned">작업자 선택</SelectItem>{operators.map(name=><SelectItem key={name} value={name}>{name}</SelectItem>)}</SelectContent></Select></div>}</div> }
 function Meta({label,value}:{label:string;value:string}) { return <div className="min-w-0"><span className="text-[9px] text-slate-400 sm:text-xs">{label}</span><div className="truncate font-bold text-slate-700">{value}</div></div> }
 
-function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:()=>void;onPatch:(c:Partial<Job>)=>void}) { const info=statusInfo[job.status]; return <div>{job.screenshot && <a href={job.screenshot} target="_blank" rel="noreferrer" className="block"><img src={job.screenshot} alt={job.modelName} className="h-auto w-full" /><span className="block p-2 text-center text-sm text-blue-700">원본 크게 보기 ↗</span></a>}<div className="bg-slate-950 p-6 text-white"><SheetHeader><div className="mb-6 flex items-center gap-2 text-sm font-bold text-blue-300"><Printer className="h-4 w-4" />{job.printer} · {info.label}</div><SheetTitle className="text-left text-3xl font-black text-white">{job.modelName}</SheetTitle><SheetDescription className="text-left text-slate-400">{job.fileName || "파일명 미입력"}</SheetDescription></SheetHeader><div className="mt-7 flex gap-2"><Button onClick={onEdit} className="bg-white text-slate-950 hover:bg-slate-100"><Pencil /> 수정</Button><Button variant="outline" onClick={onDelete} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"><Trash2 /> 삭제</Button></div></div><div className="space-y-6 p-6"><section><h3 className="mb-3 text-sm font-black text-slate-500">진행 상태</h3><div className="grid grid-cols-3 gap-2">{(["waiting","printing","completed"] as Status[]).map(s=><button key={s} onClick={()=>onPatch({status:s})} className={`rounded-xl border px-2 py-3 text-sm font-bold ${job.status===s?"border-blue-600 bg-blue-50 text-blue-700":"border-slate-200 hover:bg-slate-50"}`}>{statusInfo[s].label}</button>)}</div></section><section><div className="mb-3 flex items-center justify-between"><h3 className="text-sm font-black text-slate-500">완료 수량</h3><b>{job.completedQuantity} / {job.quantity}개</b></div><div className="flex gap-2"><Button variant="outline" size="icon" onClick={()=>onPatch({completedQuantity:Math.max(0,job.completedQuantity-1)})}>−</Button><div className="flex-1 overflow-hidden rounded-lg bg-slate-100"><div className="h-full bg-emerald-500 transition-all" style={{width:`${job.quantity?job.completedQuantity/job.quantity*100:0}%`}} /></div><Button variant="outline" size="icon" onClick={()=>onPatch({completedQuantity:Math.min(job.quantity,job.completedQuantity+1)})}>+</Button></div></section><section className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4"><Info label="필라멘트" value={job.material}/><Info label="색상" value={job.color}/><Info label="노즐" value={job.nozzle}/><Info label="예상 시간" value={job.estimatedTime||"—"}/><Info label="출력 설정" value={job.printSettings}/><Info label="우선순위" value={job.priority==="urgent"?"긴급":job.priority==="low"?"낮음":"일반"}/></section><section><Info label="고객 / 주문" value={job.customer||"—"}/><div className="mt-4"><Info label="작업 메모" value={job.note||"—"}/></div></section></div></div> }
+function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:()=>void;onPatch:(c:Partial<Job>)=>void}) {
+  const info = statusInfo[job.status];
+  return (
+    <div>
+      {job.screenshot && (
+        <a href={job.screenshot} target="_blank" rel="noreferrer" className="block">
+          <img src={job.screenshot} alt={job.modelName} className="h-auto w-full" />
+          <span className="block p-2 text-center text-sm text-blue-700">원본 크게 보기 ↗</span>
+        </a>
+      )}
+      <div className="bg-slate-950 p-6 text-white">
+        <SheetHeader>
+          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-300">
+            <Printer className="h-4 w-4" />{job.printer} · {info.label}
+          </div>
+          <SheetTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</SheetTitle>
+          <div className="mt-2 flex items-center gap-2 flex-wrap">
+            <span className="rounded bg-blue-500/20 px-2 py-0.5 font-mono text-xs font-bold text-blue-300 border border-blue-400/30">
+              G-CODE 파일
+            </span>
+            <span className="font-mono text-sm text-slate-200">{job.fileName || "파일명 미입력"}</span>
+          </div>
+          <SheetDescription className="text-left text-slate-400 mt-1">
+            {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
+          </SheetDescription>
+        </SheetHeader>
+        <div className="mt-6 flex gap-2">
+          <Button onClick={onEdit} className="bg-white text-slate-950 hover:bg-slate-100"><Pencil /> 수정</Button>
+          <Button variant="outline" onClick={onDelete} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"><Trash2 /> 삭제</Button>
+        </div>
+      </div>
+      <div className="space-y-6 p-6">
+        <section>
+          <h3 className="mb-3 text-sm font-black text-slate-500">진행 상태</h3>
+          <div className="grid grid-cols-3 gap-2">
+            {(["waiting","printing","completed"] as Status[]).map(s => (
+              <button key={s} onClick={() => onPatch({ status: s })} className={`rounded-xl border px-2 py-3 text-sm font-bold ${job.status === s ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 hover:bg-slate-50"}`}>
+                {statusInfo[s].label}
+              </button>
+            ))}
+          </div>
+        </section>
+        <section>
+          <div className="mb-3 flex items-center justify-between">
+            <h3 className="text-sm font-black text-slate-500">완료 수량</h3>
+            <b>{job.completedQuantity} / {job.quantity}개</b>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.max(0, job.completedQuantity - 1) })}>−</Button>
+            <div className="flex-1 overflow-hidden rounded-lg bg-slate-100">
+              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${job.quantity ? (job.completedQuantity / job.quantity) * 100 : 0}%` }} />
+            </div>
+            <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.min(job.quantity, job.completedQuantity + 1) })}>+</Button>
+          </div>
+        </section>
+        <section className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4">
+          <Info label="프린터 파일 (G-code)" value={job.fileName || "—"} />
+          <Info label="필라멘트" value={job.material} />
+          <Info label="색상" value={job.color} />
+          <Info label="노즐" value={job.nozzle} />
+          <Info label="예상 시간" value={job.estimatedTime || "—"} />
+          <Info label="출력 설정" value={job.printSettings} />
+          <Info label="우선순위" value={job.priority === "urgent" ? "긴급" : job.priority === "low" ? "낮음" : "일반"} />
+        </section>
+        <section>
+          <Info label="고객 / 주문" value={job.customer || "—"} />
+          <div className="mt-4">
+            <Info label="작업 메모" value={job.note || "—"} />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
+}
 function Info({label,value}:{label:string;value:string}) { return <div><div className="mb-1 text-xs font-bold text-slate-400">{label}</div><div className="text-sm font-bold text-slate-800">{value}</div></div> }
 
-function JobForm({initial,saving,onSave,onCancel}:{initial:Omit<Job,"id">|Job;saving:boolean;onSave:(j:Omit<Job,"id">|Job)=>void;onCancel:()=>void}) { const [f,setF]=useState(initial); const set=(k:string,v:string|number)=>setF(x=>({...x,[k]:v})); return <form className="grid gap-4 pt-2" onSubmit={e=>{e.preventDefault();onSave(f)}}><div className="grid gap-4 sm:grid-cols-2"><Field label="모델명 *"><Input required value={f.modelName} onChange={e=>set("modelName",e.target.value)} placeholder="Motor_Holder_v3" /></Field><Field label="STL / 3MF 파일명"><Input value={f.fileName} onChange={e=>set("fileName",e.target.value)} placeholder="model.3mf" /></Field><Field label="프린터"><Picker value={f.printer} onChange={v=>set("printer",v)} options={printers}/></Field><Field label="우선순위"><Picker value={f.priority} onChange={v=>set("priority",v)} options={["urgent","normal","low"]} labels={{urgent:"긴급",normal:"일반",low:"낮음"}}/></Field><Field label="수량"><Input type="number" min="1" value={f.quantity} onChange={e=>set("quantity",Number(e.target.value))}/></Field><Field label="완료 수량"><Input type="number" min="0" max={f.quantity} value={f.completedQuantity} onChange={e=>set("completedQuantity",Number(e.target.value))}/></Field><Field label="재료"><Input value={f.material} onChange={e=>set("material",e.target.value)} placeholder="PLA" /></Field><Field label="색상"><Input value={f.color} onChange={e=>set("color",e.target.value)} placeholder="White" /></Field><Field label="노즐"><Input value={f.nozzle} onChange={e=>set("nozzle",e.target.value)} placeholder="0.4 mm" /></Field><Field label="예상 출력시간"><Input value={f.estimatedTime} onChange={e=>set("estimatedTime",e.target.value)} placeholder="3시간 20분" /></Field><Field label="출력 설정"><Input value={f.printSettings} onChange={e=>set("printSettings",e.target.value)} /></Field><Field label="고객 / 주문"><Input value={f.customer} onChange={e=>set("customer",e.target.value)} placeholder="KAIST" /></Field></div><Field label="작업 메모"><Textarea value={f.note} onChange={e=>set("note",e.target.value)} placeholder="서포트 PETG Black" rows={3}/></Field><div className="mt-2 flex justify-end gap-2"><Button type="button" variant="outline" onClick={onCancel}>취소</Button><Button disabled={saving} className="bg-blue-600 hover:bg-blue-700">{saving&&<Loader2 className="animate-spin"/>}{"id" in f&&f.id?"수정 저장":"작업 추가"}</Button></div></form> }
+function JobForm({initial,saving,onSave,onCancel}:{initial:Omit<Job,"id">|Job;saving:boolean;onSave:(j:Omit<Job,"id">|Job)=>void;onCancel:()=>void}) {
+  const [f, setF] = useState(initial);
+  const [isModelNameCustomized, setIsModelNameCustomized] = useState(Boolean(initial.modelName && initial.modelName !== cleanFileNameToBase(initial.fileName)));
+  const set = (k: string, v: string | number) => setF(x => ({ ...x, [k]: v }));
+
+  function handleFileNameChange(value: string) {
+    const cleanBase = cleanFileNameToBase(value);
+    setF(curr => ({
+      ...curr,
+      fileName: value,
+      modelName: isModelNameCustomized ? curr.modelName : cleanBase
+    }));
+  }
+
+  function handleModelNameChange(value: string) {
+    if (value.trim() === "") {
+      setIsModelNameCustomized(false);
+      set("modelName", cleanFileNameToBase(f.fileName));
+    } else {
+      setIsModelNameCustomized(true);
+      set("modelName", value);
+    }
+  }
+
+  return (
+    <form className="grid gap-4 pt-2" onSubmit={e => { e.preventDefault(); onSave(f); }}>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="G-code / 파일명 (프린터 파일)">
+          <Input
+            value={f.fileName}
+            onChange={e => handleFileNameChange(e.target.value)}
+            placeholder="예: Motor_Holder_0.2.gcode"
+          />
+        </Field>
+        <Field label="모델명 (작업명) *">
+          <Input
+            required
+            value={f.modelName}
+            onChange={e => handleModelNameChange(e.target.value)}
+            placeholder="예: 모터 홀더"
+          />
+        </Field>
+        <Field label="프린터"><Picker value={f.printer} onChange={v => set("printer", v)} options={printers} /></Field>
+        <Field label="우선순위"><Picker value={f.priority} onChange={v => set("priority", v)} options={["urgent","normal","low"]} labels={{urgent:"긴급",normal:"일반",low:"낮음"}} /></Field>
+        <Field label="수량"><Input type="number" min="1" value={f.quantity} onChange={e => set("quantity", Number(e.target.value))} /></Field>
+        <Field label="완료 수량"><Input type="number" min="0" max={f.quantity} value={f.completedQuantity} onChange={e => set("completedQuantity", Number(e.target.value))} /></Field>
+        <Field label="재료"><Input value={f.material} onChange={e => set("material", e.target.value)} placeholder="PLA" /></Field>
+        <Field label="색상"><Input value={f.color} onChange={e => set("color", e.target.value)} placeholder="White" /></Field>
+        <Field label="노즐"><Input value={f.nozzle} onChange={e => set("nozzle", e.target.value)} placeholder="0.4 mm" /></Field>
+        <Field label="예상 출력시간"><Input value={f.estimatedTime} onChange={e => set("estimatedTime", e.target.value)} placeholder="3시간 20분" /></Field>
+        <Field label="출력 설정"><Input value={f.printSettings} onChange={e => set("printSettings", e.target.value)} /></Field>
+        <Field label="고객 / 주문"><Input value={f.customer} onChange={e => set("customer", e.target.value)} placeholder="KAIST" /></Field>
+      </div>
+      <Field label="작업 메모"><Textarea value={f.note} onChange={e => set("note", e.target.value)} placeholder="서포트 PETG Black" rows={3} /></Field>
+      <div className="mt-2 flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>취소</Button>
+        <Button disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+          {saving && <Loader2 className="animate-spin" />}
+          {"id" in f && f.id ? "수정 저장" : "작업 추가"}
+        </Button>
+      </div>
+    </form>
+  );
+}
 function Field({label,children}:{label:string;children:React.ReactNode}) { return <div className="grid gap-2"><Label>{label}</Label>{children}</div> }
 function Picker({value,onChange,options,labels={}}:{value:string;onChange:(v:string)=>void;options:string[];labels?:Record<string,string>}) { return <Select value={value} onValueChange={onChange}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent>{options.map(o=><SelectItem key={o} value={o}>{labels[o]||o}</SelectItem>)}</SelectContent></Select> }
 
@@ -325,7 +490,29 @@ function ScreenshotForm({ initialPrinter, onSaved }: { initialPrinter: string; o
   const [preview, setPreview] = useState("");
   const [busy, setBusy] = useState(false);
   const [uploaded, setUploaded] = useState("");
+  const [isModelNameCustomized, setIsModelNameCustomized] = useState(false);
+
   const set = (key: keyof Omit<Job, "id">, value: string | number) => setFields(current => ({ ...current, [key]: value }));
+
+  function handleFileNameChange(value: string) {
+    const cleanBase = cleanFileNameToBase(value);
+    setFields(curr => ({
+      ...curr,
+      fileName: value,
+      modelName: isModelNameCustomized ? curr.modelName : cleanBase
+    }));
+  }
+
+  function handleModelNameChange(value: string) {
+    if (value.trim() === "") {
+      setIsModelNameCustomized(false);
+      set("modelName", cleanFileNameToBase(fields.fileName));
+    } else {
+      setIsModelNameCustomized(true);
+      set("modelName", value);
+    }
+  }
+
   function setScreenshot(selected: File | undefined) {
     setUploaded("");
     if (!selected) return;
@@ -334,9 +521,19 @@ function ScreenshotForm({ initialPrinter, onSaved }: { initialPrinter: string; o
     if (preview) URL.revokeObjectURL(preview);
     setFile(selected);
     setPreview(URL.createObjectURL(selected));
-    if (!fields.modelName) set("modelName", selected.name || "붙여넣은 스크린샷");
-    if (!fields.fileName) set("fileName", selected.name || "clipboard-image.png");
+
+    const cleanBase = cleanFileNameToBase(selected.name);
+    setFields(curr => {
+      const nextFileName = curr.fileName || selected.name;
+      const nextModelName = isModelNameCustomized ? curr.modelName : (curr.modelName || cleanBase || "붙여넣은 스크린샷");
+      return {
+        ...curr,
+        fileName: nextFileName,
+        modelName: nextModelName
+      };
+    });
   }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
@@ -344,41 +541,69 @@ function ScreenshotForm({ initialPrinter, onSaved }: { initialPrinter: string; o
     try {
       let url = uploaded;
       if (!url && file) {
-        const form = new FormData(); form.append("file", file);
+        const form = new FormData();
+        form.append("file", file);
         const response = await fetch("/api/screenshots", { method: "POST", body: form });
         const data = await readUploadResponse(response);
         if (typeof data.url !== "string" || !data.url.startsWith("https://")) throw new Error("이미지 저장 주소를 받지 못했습니다. 다시 시도해 주세요.");
-        url = data.url; setUploaded(url);
+        url = data.url;
+        setUploaded(url);
       }
-      const response = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...fields, modelName: fields.modelName || file?.name || "새 작업", fileName: fields.fileName || file?.name || "", screenshot: url }) });
+      const finalModelName = fields.modelName.trim() || cleanFileNameToBase(fields.fileName) || file?.name || "새 작업";
+      const finalFileName = fields.fileName.trim() || file?.name || "";
+      const response = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...fields, modelName: finalModelName, fileName: finalFileName, screenshot: url })
+      });
       const data = await readUploadResponse(response);
       if (!data.job?.id) throw new Error("작업 등록 결과를 받지 못했습니다. 목록을 새로고침해 확인해 주세요.");
-      onSaved(data.job); toast.success("작업을 등록했습니다.");
-    } catch (e) { toast.error(e instanceof Error ? e.message : "등록에 실패했습니다."); }
-    finally { setBusy(false); }
+      onSaved(data.job);
+      toast.success("작업을 등록했습니다.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "등록에 실패했습니다.");
+    } finally {
+      setBusy(false);
+    }
   }
-  return <form onSubmit={submit} onPaste={event => { const image = Array.from(event.clipboardData.files).find(item => item.type.startsWith("image/")); if (image) { event.preventDefault(); setScreenshot(image); } }} className="grid gap-4">
-    <div className="grid min-h-28 place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center outline-none transition focus-within:border-blue-500" tabIndex={0}>
-      <div><b className="text-sm">스크린샷 붙여넣기</b><p className="mt-1 text-xs text-slate-500">이 영역을 클릭한 뒤 Ctrl/Cmd + V, 또는 아래에서 파일을 선택하세요.</p></div>
-      <Input className="mt-3 max-w-xs bg-white" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e => setScreenshot(e.target.files?.[0])} />
-    </div>
-    {preview && <img src={preview} alt="등록할 스크린샷 미리보기" className="max-h-72 w-full rounded-lg border object-contain" />}
-    <div className="grid gap-4 sm:grid-cols-2">
-      <Field label="모델명 *"><Input required value={fields.modelName} onChange={e => set("modelName", e.target.value)} placeholder="작업명" /></Field>
-      <Field label="프린터"><Picker value={fields.printer} onChange={value => set("printer", value)} options={printers} /></Field>
-      <Field label="수량"><Input type="number" min="1" value={fields.quantity} onChange={e => set("quantity", Number(e.target.value))} /></Field>
-      <Field label="완료 수량"><Input type="number" min="0" max={fields.quantity} value={fields.completedQuantity} onChange={e => set("completedQuantity", Number(e.target.value))} /></Field>
-      <Field label="재료"><Input value={fields.material} onChange={e => set("material", e.target.value)} /></Field>
-      <Field label="색상"><Input value={fields.color} onChange={e => set("color", e.target.value)} /></Field>
-      <Field label="노즐"><Input value={fields.nozzle} onChange={e => set("nozzle", e.target.value)} /></Field>
-      <Field label="예상 출력시간"><Input value={fields.estimatedTime} onChange={e => set("estimatedTime", e.target.value)} placeholder="3시간 20분" /></Field>
-      <Field label="고객 / 주문"><Input value={fields.customer} onChange={e => set("customer", e.target.value)} /></Field>
-      <Field label="우선순위"><Picker value={fields.priority} onChange={value => set("priority", value)} options={["urgent", "normal", "low"]} labels={{urgent:"긴급", normal:"일반", low:"낮음"}} /></Field>
-      <Field label="출력 설정"><Input value={fields.printSettings} onChange={e => set("printSettings", e.target.value)} /></Field>
-      <Field label="파일명"><Input value={fields.fileName} onChange={e => set("fileName", e.target.value)} /></Field>
-    </div>
-    <Field label="작업 메모"><Textarea value={fields.note} onChange={e => set("note", e.target.value)} rows={3} /></Field>
-    <p className="text-xs text-slate-500">PNG / JPG / WebP · 최대 10MB. 등록한 이미지는 공개 사이트 방문자에게 표시됩니다.</p>
-    <Button disabled={busy} type="submit">{busy ? "등록 중…" : "작업 등록"}</Button>
-  </form>;
+
+  return (
+    <form onSubmit={submit} onPaste={event => { const image = Array.from(event.clipboardData.files).find(item => item.type.startsWith("image/")); if (image) { event.preventDefault(); setScreenshot(image); } }} className="grid gap-4">
+      <div className="grid min-h-28 place-items-center rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-4 text-center outline-none transition focus-within:border-blue-500" tabIndex={0}>
+        <div><b className="text-sm">스크린샷 붙여넣기</b><p className="mt-1 text-xs text-slate-500">이 영역을 클릭한 뒤 Ctrl/Cmd + V, 또는 아래에서 파일을 선택하세요.</p></div>
+        <Input className="mt-3 max-w-xs bg-white" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy} onChange={e => setScreenshot(e.target.files?.[0])} />
+      </div>
+      {preview && <img src={preview} alt="등록할 스크린샷 미리보기" className="max-h-72 w-full rounded-lg border object-contain" />}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="G-code / 파일명 (프린터 내 파일명)">
+          <Input
+            value={fields.fileName}
+            onChange={e => handleFileNameChange(e.target.value)}
+            placeholder="예: Motor_Holder_0.2.gcode"
+          />
+        </Field>
+        <Field label="모델명 (작업명) *">
+          <Input
+            required
+            value={fields.modelName}
+            onChange={e => handleModelNameChange(e.target.value)}
+            placeholder="예: 모터 홀더"
+          />
+        </Field>
+        <Field label="프린터"><Picker value={fields.printer} onChange={value => set("printer", value)} options={printers} /></Field>
+        <Field label="수량"><Input type="number" min="1" value={fields.quantity} onChange={e => set("quantity", Number(e.target.value))} /></Field>
+        <Field label="완료 수량"><Input type="number" min="0" max={fields.quantity} value={fields.completedQuantity} onChange={e => set("completedQuantity", Number(e.target.value))} /></Field>
+        <Field label="재료"><Input value={fields.material} onChange={e => set("material", e.target.value)} /></Field>
+        <Field label="색상"><Input value={fields.color} onChange={e => set("color", e.target.value)} /></Field>
+        <Field label="노즐"><Input value={fields.nozzle} onChange={e => set("nozzle", e.target.value)} /></Field>
+        <Field label="예상 출력시간"><Input value={fields.estimatedTime} onChange={e => set("estimatedTime", e.target.value)} placeholder="3시간 20분" /></Field>
+        <Field label="고객 / 주문"><Input value={fields.customer} onChange={e => set("customer", e.target.value)} /></Field>
+        <Field label="우선순위"><Picker value={fields.priority} onChange={value => set("priority", value)} options={["urgent", "normal", "low"]} labels={{urgent:"긴급", normal:"일반", low:"낮음"}} /></Field>
+        <Field label="출력 설정"><Input value={fields.printSettings} onChange={e => set("printSettings", e.target.value)} /></Field>
+      </div>
+      <Field label="작업 메모"><Textarea value={fields.note} onChange={e => set("note", e.target.value)} rows={3} /></Field>
+      <p className="text-xs text-slate-500">PNG / JPG / WebP · 최대 10MB. 등록한 이미지는 공개 사이트 방문자에게 표시됩니다.</p>
+      <Button disabled={busy} type="submit">{busy ? "등록 중…" : "작업 등록"}</Button>
+    </form>
+  );
 }
