@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { readUploadResponse } from "@/lib/upload-response";
-import { AlertTriangle, Box, Check, ChevronDown, ChevronUp, Clock3, Loader2, Pencil, Play, Plus, Printer, Trash2 } from "lucide-react";
+import { AlertTriangle, Box, Check, ChevronDown, ChevronUp, Clock3, Loader2, Lock, LogOut, Pencil, Play, Plus, Printer, Trash2 } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -26,6 +26,10 @@ const statusInfo: Record<Status, { label: string; cls: string; icon: typeof Cloc
 const priorityRank: Record<Priority, number> = { urgent: 0, normal: 1, low: 2 };
 
 export default function Home() {
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
+  const [passcode, setPasscode] = useState("");
+  const [authError, setAuthError] = useState(false);
+
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Job | null>(null);
@@ -37,10 +41,51 @@ export default function Home() {
   const [collapsedCompleted, setCollapsedCompleted] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    let active = true;
-    fetch("/api/jobs").then(async r => { const d = await r.json(); if (!r.ok) throw new Error(d.error); if (active) setJobs(d.jobs); }).catch(e => toast.error(e instanceof Error ? e.message : "불러오기 실패")).finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
+    const saved = localStorage.getItem("printfarm_auth");
+    if (saved === "1938") {
+      setIsAuthenticated(true);
+    } else {
+      setIsAuthenticated(false);
+    }
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let active = true;
+    setLoading(true);
+    fetch("/api/jobs")
+      .then(async r => {
+        const d = await r.json();
+        if (!r.ok) throw new Error(d.error);
+        if (active) setJobs(d.jobs);
+      })
+      .catch(e => toast.error(e instanceof Error ? e.message : "불러오기 실패"))
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [isAuthenticated]);
+
+  function handleLogin(e?: React.FormEvent) {
+    if (e) e.preventDefault();
+    if (passcode.trim() === "1938") {
+      localStorage.setItem("printfarm_auth", "1938");
+      setIsAuthenticated(true);
+      setAuthError(false);
+      setPasscode("");
+      toast.success("로그인되었습니다.");
+    } else {
+      setAuthError(true);
+      toast.error("비밀번호가 올바르지 않습니다.");
+    }
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("printfarm_auth");
+    setIsAuthenticated(false);
+    setPasscode("");
+    toast.info("로그아웃되었습니다.");
+  }
 
   const statusRank: Record<Status, number> = { printing: 0, error: 1, waiting: 2, completed: 3 };
   const sortedJobs = [...jobs].sort((a, b) => {
@@ -86,13 +131,83 @@ export default function Home() {
       toast.error(error instanceof Error ? error.message : "작업 순서를 저장하지 못했습니다.");
     }
   }
+  if (isAuthenticated === null) {
+    return (
+      <div className="min-h-screen bg-[#f4f5f7] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <main className="min-h-screen bg-[#f4f5f7] flex items-center justify-center p-4">
+        <Toaster position="bottom-right" richColors />
+        <div className="w-full max-w-sm rounded-3xl border border-slate-200 bg-white p-7 sm:p-9 shadow-xl text-center">
+          <div className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-slate-900 text-white shadow-lg">
+            <Lock className="h-8 w-8" />
+          </div>
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            김명규크리에이티브
+          </h1>
+          <p className="mt-1.5 text-xs sm:text-sm text-slate-500 font-medium">
+            프린트팜 보드 접속 비밀번호를 입력해주세요
+          </p>
+
+          <form onSubmit={handleLogin} className="mt-6 space-y-4">
+            <div>
+              <Input
+                type="password"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="비밀번호 4자리"
+                value={passcode}
+                onChange={e => {
+                  setPasscode(e.target.value);
+                  setAuthError(false);
+                }}
+                autoFocus
+                className={`h-12 text-center text-2xl tracking-[0.3em] font-black rounded-xl bg-slate-50 border-slate-200 ${
+                  authError ? "border-red-500 ring-2 ring-red-500/20 bg-red-50/30" : ""
+                }`}
+              />
+              {authError && (
+                <p className="mt-2 text-xs font-bold text-red-600 flex items-center justify-center gap-1">
+                  <AlertTriangle className="h-3.5 w-3.5" /> 비밀번호가 올바르지 않습니다.
+                </p>
+              )}
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-base font-bold shadow-md transition-all active:scale-98"
+            >
+              로그인
+            </Button>
+          </form>
+
+          <div className="mt-6 pt-4 border-t border-slate-100 text-[11px] font-semibold text-slate-400">
+            3D Print Farm Management System
+          </div>
+        </div>
+      </main>
+    );
+  }
+
   const counts = { total: jobs.length, printing: jobs.filter(j => j.status === "printing").length, waiting: jobs.filter(j => j.status === "waiting").length, completed: jobs.filter(j => j.status === "completed").length };
 
   return <main className="min-h-screen bg-[#f4f5f7] text-[#15191f]">
     <Toaster position="bottom-right" richColors />
     <header className="border-b border-slate-200 bg-white px-3 py-4 sm:px-4 sm:py-5 lg:px-7"><div className="mx-auto flex max-w-[1800px] flex-col gap-3 sm:gap-5 xl:flex-row xl:items-end xl:justify-between">
       <div className="flex items-center gap-3 sm:gap-4"><div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-slate-900 text-white shadow-sm sm:h-12 sm:w-12"><Printer className="h-5 w-5 sm:h-6 sm:w-6" /></div><h1 className="text-2xl font-black tracking-[-.04em] sm:text-3xl">김명규크리에이티브 작업관리 시스템</h1></div>
-      <div className="grid w-full grid-cols-4 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2"><Stat label="전체 작업" value={counts.total} /><Stat label="출력 중" value={counts.printing} tone="blue" /><Stat label="대기" value={counts.waiting} tone="amber" /><Stat label="완료" value={counts.completed} tone="green" /><Button className="col-span-4 h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold hover:bg-blue-700 sm:ml-1 sm:h-12 sm:rounded-xl sm:px-5 sm:text-base" onClick={() => { setRegisterPrinter("P2S"); setRegisterOpen(true); }}><Plus className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" /> 작업 등록</Button></div>
+      <div className="grid w-full grid-cols-4 gap-1.5 sm:flex sm:w-auto sm:flex-wrap sm:items-center sm:gap-2">
+        <Stat label="전체 작업" value={counts.total} />
+        <Stat label="출력 중" value={counts.printing} tone="blue" />
+        <Stat label="대기" value={counts.waiting} tone="amber" />
+        <Stat label="완료" value={counts.completed} tone="green" />
+        <Button className="col-span-3 h-10 rounded-lg bg-blue-600 px-4 text-sm font-bold hover:bg-blue-700 sm:ml-1 sm:h-12 sm:rounded-xl sm:px-5 sm:text-base" onClick={() => { setRegisterPrinter("P2S"); setRegisterOpen(true); }}><Plus className="mr-1.5 h-4 w-4 sm:mr-2 sm:h-5 sm:w-5" /> 작업 등록</Button>
+        <Button variant="outline" onClick={handleLogout} className="col-span-1 h-10 rounded-lg sm:h-12 sm:rounded-xl border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-900 text-xs sm:text-sm font-bold flex items-center justify-center gap-1.5" title="로그아웃"><LogOut className="h-4 w-4" /><span className="hidden sm:inline">로그아웃</span></Button>
+      </div>
     </div></header>
     <section className="mx-auto max-w-[1800px] p-2 sm:p-3 lg:p-6">{loading ? <div className="flex h-[60vh] items-center justify-center text-slate-500"><Loader2 className="mr-2 animate-spin" /> 작업 불러오는 중</div> : <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-5">
       {printers.map(printer => {
@@ -208,7 +323,7 @@ export default function Home() {
       })}</div>}</section>
     <Dialog open={registerOpen} onOpenChange={setRegisterOpen}><DialogContent className="max-h-[92vh] overflow-y-auto"><DialogHeader><DialogTitle>작업 등록</DialogTitle><DialogDescription>스크린샷은 선택 사항입니다. 파일 선택이나 붙여넣기로 추가할 수 있습니다.</DialogDescription></DialogHeader><ScreenshotForm key={registerOpen ? registerPrinter : "closed"} initialPrinter={registerPrinter} onSaved={(job) => { setJobs(v => [...v, job]); setRegisterOpen(false); }} /></DialogContent></Dialog>
     <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
-      <DialogContent className="max-h-[90vh] p-0 gap-0 sm:max-w-2xl flex flex-col overflow-hidden [&>button]:z-30 [&>button]:text-white [&>button]:bg-black/60 [&>button]:hover:bg-black/90 [&>button]:rounded-full [&>button]:p-1.5">
+      <DialogContent className="max-h-[92vh] sm:max-w-4xl p-0 gap-0 flex flex-col overflow-hidden [&>button]:z-30 [&>button]:text-slate-600 [&>button:hover]:text-slate-900 [&>button]:bg-slate-100/90 [&>button:hover]:bg-slate-200 [&>button]:rounded-full [&>button]:p-1.5">
         <div className="overflow-y-auto flex-1 overscroll-contain">
           {selected && <Detail job={selected} onEdit={() => { setEditing(selected); setSelected(null); }} onDelete={() => void removeJob(selected.id)} onPatch={(c) => void patchJob(selected.id,c)} />}
         </div>
@@ -231,15 +346,22 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
 
   if (job.screenshot) {
     return (
-      <article className={`overflow-hidden rounded-lg border bg-white shadow-sm transition hover:shadow-md sm:rounded-xl ${
+      <article onClick={onOpen} className={`group cursor-pointer overflow-hidden rounded-lg border bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:rounded-xl ${
         isCompleted ? "border-emerald-200 bg-emerald-50/20" :
         isPrinting ? "border-blue-300 ring-1 ring-blue-200" :
         job.priority === "urgent" ? "border-l-[3px] border-l-red-500 sm:border-l-4" : "border-slate-200"
       }`}>
         <div className="relative">
-          <button className="block w-full" onClick={onOpen} aria-label="스크린샷 크게 보기">
-            <img src={job.screenshot} alt={job.modelName} className="h-auto w-full object-cover" loading="lazy" />
-          </button>
+          <div className="block w-full overflow-hidden bg-slate-950/90 relative group/thumb">
+            <img src={job.screenshot} alt={job.modelName} className="w-full h-auto block object-contain transition-transform duration-200 group-hover/thumb:scale-101" loading="lazy" />
+            <button
+              type="button"
+              onClick={onOpen}
+              className="absolute top-2 right-2 rounded-md bg-black/75 hover:bg-black text-white px-2.5 py-1 text-[11px] font-bold backdrop-blur-xs shadow-md flex items-center gap-1 transition-all border border-white/25 hover:border-white/40 z-10"
+            >
+              상세보기 ↗
+            </button>
+          </div>
           <div className="p-2 sm:p-2.5 bg-white/95 border-b border-slate-100">
             <div className="flex items-start justify-between gap-1">
               <div className="min-w-0 flex-1">
@@ -319,7 +441,14 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
               {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
             </p>
           </div>
-          <div className="flex shrink-0 gap-0.5" onClick={event => event.stopPropagation()}>
+          <div className="flex shrink-0 items-center gap-1" onClick={event => event.stopPropagation()}>
+            <button
+              type="button"
+              onClick={onOpen}
+              className="rounded-md border border-slate-200 bg-white px-2 py-0.5 text-[11px] font-bold text-slate-700 hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 shadow-2xs transition-colors"
+            >
+              상세보기
+            </button>
             <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
             <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
           </div>
@@ -359,73 +488,168 @@ function Meta({label,value}:{label:string;value:string}) { return <div className
 function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:()=>void;onPatch:(c:Partial<Job>)=>void}) {
   const info = statusInfo[job.status];
   return (
-    <div>
-      {job.screenshot && (
-        <a href={job.screenshot} target="_blank" rel="noreferrer" className="block">
-          <img src={job.screenshot} alt={job.modelName} className="h-auto w-full" />
-          <span className="block p-2 text-center text-sm text-blue-700">원본 크게 보기 ↗</span>
-        </a>
-      )}
-      <div className="bg-slate-950 p-6 text-white">
-        <DialogHeader>
-          <div className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-300">
-            <Printer className="h-4 w-4" />{job.printer} · {info.label}
-          </div>
-          <DialogTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</DialogTitle>
-          <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/10 p-3 border border-white/15">
-            <span className="shrink-0 rounded bg-blue-500 px-1.5 py-0.5 font-mono text-[9px] font-black text-white leading-none mt-0.5">
-              GCODE
-            </span>
-            <span className="font-mono text-sm sm:text-base font-bold text-white break-all leading-snug">{job.fileName || "파일명 미입력"}</span>
-          </div>
-          <DialogDescription className="text-left text-slate-400 mt-2 text-sm">
-            {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="mt-6 flex gap-2">
-          <Button onClick={onEdit} className="bg-white text-slate-950 hover:bg-slate-100"><Pencil /> 수정</Button>
-          <Button variant="outline" onClick={onDelete} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"><Trash2 /> 삭제</Button>
-        </div>
-      </div>
-      <div className="space-y-6 p-6">
-        <section>
-          <h3 className="mb-3 text-sm font-black text-slate-500">진행 상태</h3>
-          <div className="grid grid-cols-3 gap-2">
-            {(["waiting","printing","completed"] as Status[]).map(s => (
-              <button key={s} onClick={() => onPatch({ status: s })} className={`rounded-xl border px-2 py-3 text-sm font-bold ${job.status === s ? "border-blue-600 bg-blue-50 text-blue-700" : "border-slate-200 hover:bg-slate-50"}`}>
-                {statusInfo[s].label}
-              </button>
-            ))}
-          </div>
-        </section>
-        <section>
-          <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-black text-slate-500">완료 수량</h3>
-            <b>{job.completedQuantity} / {job.quantity}개</b>
-          </div>
-          <div className="flex gap-2">
-            <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.max(0, job.completedQuantity - 1) })}>−</Button>
-            <div className="flex-1 overflow-hidden rounded-lg bg-slate-100">
-              <div className="h-full bg-emerald-500 transition-all" style={{ width: `${job.quantity ? (job.completedQuantity / job.quantity) * 100 : 0}%` }} />
+    <div className="p-4 sm:p-6 bg-slate-100/70 min-h-full">
+      <DialogHeader className="sr-only">
+        <DialogTitle>{job.modelName}</DialogTitle>
+        <DialogDescription>프린터 작업 상세 정보 및 출력 제어</DialogDescription>
+      </DialogHeader>
+
+      {/* 4사분면 레이아웃 */}
+      <div className="space-y-4 sm:space-y-5">
+        {/* 상단 행: 제2사분면(좌상단, 사진) & 제1사분면(우상단, 모델명·상태·수량) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          
+          {/* [제2사분면 - 좌상단]: 사진 / 미리보기 */}
+          <section aria-label="모델 사진" className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-3.5 shadow-xs">
+            <div className="mb-2.5 flex items-center justify-between px-1">
+              <span className="text-xs font-black text-slate-600 flex items-center gap-1.5">
+                📷 모델 사진 / 미리보기
+              </span>
+              {job.screenshot && (
+                <a
+                  href={job.screenshot}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="rounded-md bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-600 px-2 py-0.5 text-[11px] font-bold flex items-center gap-1 transition-colors"
+                >
+                  원본 크게 보기 ↗
+                </a>
+              )}
             </div>
-            <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.min(job.quantity, job.completedQuantity + 1) })}>+</Button>
-          </div>
-        </section>
-        <section className="grid grid-cols-2 gap-4 rounded-2xl bg-slate-50 p-4">
-          <Info label="프린터 파일 (G-code)" value={job.fileName || "—"} />
-          <Info label="필라멘트" value={job.material} />
-          <Info label="색상" value={job.color} />
-          <Info label="노즐" value={job.nozzle} />
-          <Info label="예상 시간" value={job.estimatedTime || "—"} />
-          <Info label="출력 설정" value={job.printSettings} />
-          <Info label="우선순위" value={job.priority === "urgent" ? "긴급" : job.priority === "low" ? "낮음" : "일반"} />
-        </section>
-        <section>
-          <Info label="고객 / 주문" value={job.customer || "—"} />
-          <div className="mt-4">
-            <Info label="작업 메모" value={job.note || "—"} />
-          </div>
-        </section>
+            <div className="relative flex-1 min-h-[220px] sm:min-h-[260px] rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center p-2 border border-slate-900">
+              {job.screenshot ? (
+                <img
+                  src={job.screenshot}
+                  alt={job.modelName}
+                  className="max-h-[260px] w-full h-auto object-contain rounded"
+                  loading="lazy"
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-slate-500 p-8 text-center">
+                  <Box className="h-12 w-12 text-slate-600 mb-2" />
+                  <span className="text-xs font-bold">등록된 스크린샷이 없습니다</span>
+                </div>
+              )}
+            </div>
+          </section>
+
+          {/* [제1사분면 - 우상단]: 모델 기본 정보 & 진행상태 & 완료 수량 & 수정/삭제 */}
+          <section aria-label="작업 정보 및 제어" className="flex flex-col rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs justify-between">
+            <div>
+              {/* 상단 바: 프린터 뱃지 & 수정/삭제 버튼 (닫기 X 버튼과 겹치지 않게 mr-8 적용) */}
+              <div className="flex items-center justify-between gap-2 mr-8">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-blue-700 bg-blue-50 px-2.5 py-1 rounded-md border border-blue-200">
+                  <Printer className="h-3.5 w-3.5" />{job.printer} · {info.label}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Button size="sm" onClick={onEdit} className="h-7 sm:h-8 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold px-2.5">
+                    <Pencil className="h-3.5 w-3.5" /> 수정
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={onDelete} className="h-7 sm:h-8 border-slate-200 text-red-600 hover:bg-red-50 hover:border-red-200 text-xs font-bold px-2.5">
+                    <Trash2 className="h-3.5 w-3.5" /> 삭제
+                  </Button>
+                </div>
+              </div>
+
+              {/* 모델명 */}
+              <h2 className="text-xl sm:text-2xl font-black text-slate-900 mt-2.5 leading-snug">
+                {job.modelName}
+              </h2>
+
+              {/* GCODE 파일명 박스 */}
+              <div className="mt-2.5 rounded-lg bg-slate-100 p-2 sm:p-2.5 border border-slate-200/90">
+                <div className="flex items-start gap-1.5">
+                  <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[8px] font-black tracking-tight text-white leading-none mt-0.5">
+                    GCODE
+                  </span>
+                  <span className="font-mono text-xs sm:text-[13px] font-extrabold text-slate-800 break-all leading-snug">
+                    {job.fileName || "파일명 미입력"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 진행 상태 변경 & 완료 수량 */}
+            <div className="mt-4 space-y-3 pt-3 border-t border-slate-100">
+              <div>
+                <div className="mb-1.5 text-xs font-black text-slate-500">진행 상태 변경</div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {(["waiting","printing","completed"] as Status[]).map(s => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => onPatch({ status: s })}
+                      className={`rounded-lg border py-2 text-xs font-bold transition ${
+                        job.status === s
+                          ? "border-blue-600 bg-blue-50 text-blue-700 shadow-xs font-black"
+                          : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                      }`}
+                    >
+                      {statusInfo[s].label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-1.5 flex items-center justify-between">
+                  <span className="text-xs font-black text-slate-500">완료 수량</span>
+                  <b className="text-sm font-extrabold text-slate-900">{job.completedQuantity} / {job.quantity}개</b>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.max(0, job.completedQuantity - 1) })} className="h-8 w-8 font-bold text-base">−</Button>
+                  <div className="flex-1 overflow-hidden rounded-lg bg-slate-100 h-3.5 p-0.5">
+                    <div className="h-full rounded-md bg-emerald-500 transition-all" style={{ width: `${job.quantity ? (job.completedQuantity / job.quantity) * 100 : 0}%` }} />
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => onPatch({ completedQuantity: Math.min(job.quantity, job.completedQuantity + 1) })} className="h-8 w-8 font-bold text-base">+</Button>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* 하단 행: 제3사분면(좌하단, 출력상세조건) & 제4사분면(우하단, 주문·메모) */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
+          
+          {/* [제3사분면 - 좌하단]: 출력 상세 조건 스펙 */}
+          <section aria-label="출력 조건" className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs">
+            <h3 className="text-xs font-black text-slate-600 mb-3 flex items-center gap-1.5">
+              ⚙️ 출력 상세 조건
+            </h3>
+            <div className="grid grid-cols-2 gap-3.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+              <Info label="필라멘트" value={job.material} />
+              <Info label="색상" value={job.color} />
+              <Info label="노즐 구경" value={job.nozzle} />
+              <Info label="예상 시간" value={job.estimatedTime || "—"} />
+              <Info label="출력 설정" value={job.printSettings} />
+              <Info label="우선순위" value={job.priority === "urgent" ? "긴급" : job.priority === "low" ? "낮음" : "일반"} />
+            </div>
+          </section>
+
+          {/* [제4사분면 - 우하단]: 주문/고객 정보 및 작업 메모 */}
+          <section aria-label="주문 및 메모" className="rounded-2xl border border-slate-200/90 bg-white p-4 sm:p-5 shadow-xs flex flex-col justify-between">
+            <div>
+              <h3 className="text-xs font-black text-slate-600 mb-3 flex items-center gap-1.5">
+                📋 주문 & 담당 정보
+              </h3>
+              <div className="grid grid-cols-2 gap-3.5 rounded-xl bg-slate-50 p-3.5 border border-slate-100">
+                <Info label="고객 / 주문처" value={job.customer || "미지정"} />
+                <Info label="배정 작업자" value={job.operator || "미지정"} />
+              </div>
+            </div>
+
+            {job.note ? (
+              <div className="mt-3.5 rounded-xl bg-amber-50/80 p-3 border border-amber-200/80">
+                <div className="mb-1 text-xs font-bold text-amber-800">📝 작업 메모</div>
+                <p className="text-xs sm:text-sm font-medium text-amber-950 whitespace-pre-wrap">{job.note}</p>
+              </div>
+            ) : (
+              <div className="mt-3.5 rounded-xl bg-slate-50 p-3 border border-slate-100 text-slate-400 text-xs text-center font-medium">
+                등록된 메모가 없습니다
+              </div>
+            )}
+          </section>
+        </div>
       </div>
     </div>
   );
