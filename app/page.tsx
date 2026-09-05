@@ -235,28 +235,37 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
           <button className="block w-full" onClick={onOpen} aria-label="스크린샷 크게 보기">
             <img src={job.screenshot} alt={job.modelName} className="h-auto w-full object-cover" loading="lazy" />
           </button>
-          <div className="flex items-center justify-between p-1.5 bg-white/95 border-b border-slate-100">
-            <div className="min-w-0 flex-1 space-y-0.5">
-              <div className="flex items-center gap-1 flex-wrap">
-                {job.priority === "urgent" && <span className="rounded bg-red-50 px-1 py-0.5 text-[9px] font-black text-red-600">긴급</span>}
-                {isCompleted && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-black text-emerald-700">완료</span>}
-                <h4 className="truncate text-xs font-black text-slate-900" title={job.modelName}>{job.modelName}</h4>
+          <div className="p-2 sm:p-2.5 bg-white/95 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-1">
+              <div className="min-w-0 flex-1 space-y-1">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {job.priority === "urgent" && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-black text-red-600">긴급</span>}
+                  {isCompleted && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">완료</span>}
+                  <h4 className="truncate text-sm sm:text-base font-black text-slate-900" title={job.modelName}>{job.modelName}</h4>
+                </div>
+
                 {job.fileName && (
-                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1 py-0.2 text-[9px] font-mono font-bold text-slate-700 border border-slate-200 truncate max-w-[140px]" title={`프린터 파일: ${job.fileName}`}>
-                    <span className="text-[8px] font-black text-blue-600 bg-blue-50 px-0.5 rounded">GCODE</span>
-                    <span className="truncate">{job.fileName}</span>
-                  </span>
+                  <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 border border-slate-200/90 min-w-0">
+                    <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide text-white">
+                      GCODE
+                    </span>
+                    <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800" title={`프린터 파일: ${job.fileName}`}>
+                      {job.fileName}
+                    </span>
+                  </div>
                 )}
+
+                <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">{job.customer ? `고객: ${job.customer}` : "고객 미지정"}</p>
               </div>
-              <p className="truncate text-[10px] text-slate-500">{job.customer ? `고객: ${job.customer}` : "고객 미지정"}</p>
-            </div>
-            <div className="flex shrink-0 gap-0.5 ml-1" onClick={event => event.stopPropagation()}>
-              <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
-              <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+
+              <div className="flex shrink-0 gap-0.5 ml-1 pt-0.5" onClick={event => event.stopPropagation()}>
+                <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
+                <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
+              </div>
             </div>
           </div>
         </div>
-        <div className="space-y-1.5 p-2">
+        <div className="space-y-1.5 p-2 sm:p-2.5">
           <div className="grid grid-cols-3 gap-1 text-[10px] sm:text-xs">
             <Meta label="수량" value={`${job.completedQuantity}/${job.quantity}개`} />
             <Meta label="재료" value={job.material} />
@@ -281,38 +290,40 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
     }`}>
       <div className="p-2 sm:p-3">
         <div className="mb-2 flex items-start gap-1.5 sm:mb-3 sm:gap-3">
-          <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-md sm:h-12 sm:w-12 sm:rounded-lg ${
+          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-md sm:h-12 sm:w-12 sm:rounded-lg ${
             isCompleted ? "bg-emerald-100 text-emerald-700" :
             isPrinting ? "bg-blue-100 text-blue-700" :
             job.material.includes("CF") ? "bg-zinc-800 text-zinc-100" :
             job.color.toLowerCase().includes("white") ? "border bg-slate-50 text-slate-500" :
             "bg-gradient-to-br from-blue-100 to-indigo-200 text-blue-700"
           }`}>
-            {isCompleted ? <Check className="h-4 w-4 sm:h-6 sm:w-6" /> : <Box className="h-4 w-4 sm:h-6 sm:w-6" />}
+            {isCompleted ? <Check className="h-5 w-5 sm:h-6 sm:w-6" /> : <Box className="h-5 w-5 sm:h-6 sm:w-6" />}
           </div>
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-1 sm:gap-1.5">
-              {job.priority === "urgent" && <span className="rounded bg-red-50 px-1 py-0.5 text-[9px] font-black text-red-600 sm:px-1.5 sm:text-[11px]">긴급</span>}
-              {job.priority === "low" && <span className="rounded bg-slate-100 px-1 py-0.5 text-[9px] font-bold text-slate-500 sm:px-1.5 sm:text-[11px]">낮음</span>}
-              {isCompleted && <span className="rounded bg-emerald-100 px-1 py-0.5 text-[9px] font-black text-emerald-700 sm:px-1.5 sm:text-[11px]">완료됨</span>}
+              {job.priority === "urgent" && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-black text-red-600 sm:text-[11px]">긴급</span>}
+              {job.priority === "low" && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 sm:text-[11px]">낮음</span>}
+              {isCompleted && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 sm:text-[11px]">완료됨</span>}
             </div>
-            {/* 병렬 이름 노출: 메인 모델명 & 프린터 G-code 파일명 */}
-            <div className="space-y-0.5 min-w-0">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h3 className="text-xs font-black sm:text-[14px] text-slate-900 leading-tight" title={job.modelName}>
-                  {job.modelName}
-                </h3>
-                {job.fileName && (
-                  <span
-                    className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-mono font-bold text-slate-700 border border-slate-200 truncate max-w-full"
-                    title={`프린터 파일: ${job.fileName}`}
-                  >
-                    <span className="text-[9px] font-black text-blue-600 bg-blue-50 px-1 rounded border border-blue-100">GCODE</span>
-                    <span className="truncate">{job.fileName}</span>
+
+            {/* 두 줄 명확 노출: 1줄 모델명(크게), 2줄 프린터 G-code 파일명(크게) */}
+            <div className="space-y-1 min-w-0">
+              <h3 className="truncate text-sm sm:text-base font-black text-slate-900 leading-tight" title={job.modelName}>
+                {job.modelName}
+              </h3>
+
+              {job.fileName ? (
+                <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 border border-slate-200/90 min-w-0">
+                  <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide text-white">
+                    GCODE
                   </span>
-                )}
-              </div>
-              <p className="truncate text-[10px] font-medium text-slate-500 sm:text-xs">
+                  <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800" title={`프린터 파일: ${job.fileName}`}>
+                    {job.fileName}
+                  </span>
+                </div>
+              ) : null}
+
+              <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">
                 {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
               </p>
             </div>
@@ -357,13 +368,13 @@ function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:
             <Printer className="h-4 w-4" />{job.printer} · {info.label}
           </div>
           <SheetTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</SheetTitle>
-          <div className="mt-2 flex items-center gap-2 flex-wrap">
-            <span className="rounded bg-blue-500/20 px-2 py-0.5 font-mono text-xs font-bold text-blue-300 border border-blue-400/30">
-              G-CODE 파일
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/10 p-2.5 border border-white/15">
+            <span className="shrink-0 rounded bg-blue-500 px-2 py-0.5 font-mono text-xs font-black text-white">
+              GCODE 파일
             </span>
-            <span className="font-mono text-sm text-slate-200">{job.fileName || "파일명 미입력"}</span>
+            <span className="font-mono text-sm sm:text-base font-bold text-white truncate">{job.fileName || "파일명 미입력"}</span>
           </div>
-          <SheetDescription className="text-left text-slate-400 mt-1">
+          <SheetDescription className="text-left text-slate-400 mt-2 text-sm">
             {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
           </SheetDescription>
         </SheetHeader>
