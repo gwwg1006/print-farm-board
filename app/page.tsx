@@ -6,7 +6,6 @@ import { AlertTriangle, Box, Check, ChevronDown, ChevronUp, Clock3, Loader2, Pen
 import { toast, Toaster } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -208,7 +207,7 @@ export default function Home() {
         </section>
       })}</div>}</section>
     <Dialog open={registerOpen} onOpenChange={setRegisterOpen}><DialogContent className="max-h-[92vh] overflow-y-auto"><DialogHeader><DialogTitle>작업 등록</DialogTitle><DialogDescription>스크린샷은 선택 사항입니다. 파일 선택이나 붙여넣기로 추가할 수 있습니다.</DialogDescription></DialogHeader><ScreenshotForm key={registerOpen ? registerPrinter : "closed"} initialPrinter={registerPrinter} onSaved={(job) => { setJobs(v => [...v, job]); setRegisterOpen(false); }} /></DialogContent></Dialog>
-    <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><SheetContent className="w-full overflow-y-auto p-0 sm:max-w-lg">{selected && <Detail job={selected} onEdit={() => { setEditing(selected); setSelected(null); }} onDelete={() => void removeJob(selected.id)} onPatch={(c) => void patchJob(selected.id,c)} />}</SheetContent></Sheet>
+    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-2xl overflow-hidden [&>button]:text-white [&>button]:opacity-80 [&>button:hover]:opacity-100">{selected && <Detail job={selected} onEdit={() => { setEditing(selected); setSelected(null); }} onDelete={() => void removeJob(selected.id)} onPatch={(c) => void patchJob(selected.id,c)} />}</DialogContent></Dialog>
     <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle className="text-2xl">작업 수정</DialogTitle><DialogDescription>모델과 출력 조건을 수정합니다.</DialogDescription></DialogHeader>{editing && <JobForm initial={editing} saving={saving} onSave={saveJob} onCancel={() => setEditing(null)} />}</DialogContent></Dialog>
   </main>;
 }
@@ -363,21 +362,21 @@ function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:
         </a>
       )}
       <div className="bg-slate-950 p-6 text-white">
-        <SheetHeader>
+        <DialogHeader>
           <div className="mb-4 flex items-center gap-2 text-sm font-bold text-blue-300">
             <Printer className="h-4 w-4" />{job.printer} · {info.label}
           </div>
-          <SheetTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</SheetTitle>
+          <DialogTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</DialogTitle>
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/10 p-2.5 border border-white/15">
             <span className="shrink-0 rounded bg-blue-500 px-2 py-0.5 font-mono text-xs font-black text-white">
               GCODE 파일
             </span>
             <span className="font-mono text-sm sm:text-base font-bold text-white truncate">{job.fileName || "파일명 미입력"}</span>
           </div>
-          <SheetDescription className="text-left text-slate-400 mt-2 text-sm">
+          <DialogDescription className="text-left text-slate-400 mt-2 text-sm">
             {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
         <div className="mt-6 flex gap-2">
           <Button onClick={onEdit} className="bg-white text-slate-950 hover:bg-slate-100"><Pencil /> 수정</Button>
           <Button variant="outline" onClick={onDelete} className="border-white/20 bg-transparent text-white hover:bg-white/10 hover:text-white"><Trash2 /> 삭제</Button>
