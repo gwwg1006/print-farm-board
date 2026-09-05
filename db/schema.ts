@@ -1,9 +1,9 @@
 import { sql } from "drizzle-orm";
-import { integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { integer, pgTable, serial, text } from "drizzle-orm/pg-core";
 
-export const jobs = sqliteTable("jobs", {
+export const jobs = pgTable("jobs", {
   screenshot: text("screenshot").notNull().default(""),
-  id: integer("id").primaryKey({ autoIncrement: true }),
+  id: serial("id").primaryKey(),
   printer: text("printer").notNull(),
   modelName: text("model_name").notNull(),
   fileName: text("file_name").notNull().default(""),

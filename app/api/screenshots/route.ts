@@ -1,4 +1,4 @@
-import { env } from "cloudflare:workers";
+import { put } from "@vercel/blob";
 
 export async function POST(request: Request) {
   try {
@@ -11,8 +11,8 @@ export async function POST(request: Request) {
     const jpeg = bytes[0]===255 && bytes[1]===216 && bytes[2]===255;
     const webp = new TextDecoder().decode(bytes.slice(0,4))==="RIFF" && new TextDecoder().decode(bytes.slice(8,12))==="WEBP";
     if (!png && !jpeg && !webp) return Response.json({ error: "PNG, JPG, WebP 이미지만 등록할 수 있습니다." }, { status: 400 });
-    const key = crypto.randomUUID();
-    await env.BUCKET.put(`screenshots/${key}`, bytes, { httpMetadata: { contentType: png ? "image/png" : jpeg ? "image/jpeg" : "image/webp" } });
-    return Response.json({ url: `/api/screenshots/${key}` });
+    const extension = png ? "png" : jpeg ? "jpg" : "webp";
+    const blob = await put(`screenshots/${crypto.randomUUID()}.${extension}`, file, { access: "public", addRandomSuffix: false });
+    return Response.json({ url: blob.url });
   } catch { return Response.json({ error: "이미지를 저장하지 못했습니다. 다시 시도해 주세요." }, { status: 500 }); }
 }

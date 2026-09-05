@@ -108,7 +108,7 @@ function ScreenshotForm({ initialPrinter, onSaved }: { initialPrinter: string; o
         const form = new FormData(); form.append("file", file);
         const response = await fetch("/api/screenshots", { method: "POST", body: form });
         const data = await readUploadResponse(response);
-        if (typeof data.url !== "string" || !data.url.startsWith("/api/screenshots/")) throw new Error("이미지 저장 주소를 받지 못했습니다. 다시 시도해 주세요.");
+        if (typeof data.url !== "string" || !data.url.startsWith("https://")) throw new Error("이미지 저장 주소를 받지 못했습니다. 다시 시도해 주세요.");
         url = data.url; setUploaded(url);
       }
       const response = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...fields, modelName: fields.modelName || file?.name || "새 작업", fileName: fields.fileName || file?.name || "", screenshot: url }) });

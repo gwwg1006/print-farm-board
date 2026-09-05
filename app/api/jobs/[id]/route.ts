@@ -1,9 +1,10 @@
 import { eq } from "drizzle-orm";
-import { getDb } from "../../../../db";
+import { ensureJobsTable, getDb } from "../../../../db";
 import { jobs } from "../../../../db/schema";
 
 export async function PATCH(request: Request, context: { params: Promise<{ id: string }> }) {
   try {
+    await ensureJobsTable();
     const { id } = await context.params;
     const body = await request.json();
     delete body.id; delete body.createdAt;
@@ -13,6 +14,6 @@ export async function PATCH(request: Request, context: { params: Promise<{ id: s
 }
 
 export async function DELETE(_: Request, context: { params: Promise<{ id: string }> }) {
-  try { const { id } = await context.params; await getDb().delete(jobs).where(eq(jobs.id, Number(id))); return new Response(null, { status: 204 }); }
+  try { await ensureJobsTable(); const { id } = await context.params; await getDb().delete(jobs).where(eq(jobs.id, Number(id))); return new Response(null, { status: 204 }); }
   catch (error) { return Response.json({ error: error instanceof Error ? error.message : "작업을 삭제하지 못했습니다." }, { status: 500 }); }
 }
