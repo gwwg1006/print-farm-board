@@ -207,7 +207,13 @@ export default function Home() {
         </section>
       })}</div>}</section>
     <Dialog open={registerOpen} onOpenChange={setRegisterOpen}><DialogContent className="max-h-[92vh] overflow-y-auto"><DialogHeader><DialogTitle>작업 등록</DialogTitle><DialogDescription>스크린샷은 선택 사항입니다. 파일 선택이나 붙여넣기로 추가할 수 있습니다.</DialogDescription></DialogHeader><ScreenshotForm key={registerOpen ? registerPrinter : "closed"} initialPrinter={registerPrinter} onSaved={(job) => { setJobs(v => [...v, job]); setRegisterOpen(false); }} /></DialogContent></Dialog>
-    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}><DialogContent className="max-h-[92vh] overflow-y-auto p-0 sm:max-w-2xl overflow-hidden [&>button]:text-white [&>button]:opacity-80 [&>button:hover]:opacity-100">{selected && <Detail job={selected} onEdit={() => { setEditing(selected); setSelected(null); }} onDelete={() => void removeJob(selected.id)} onPatch={(c) => void patchJob(selected.id,c)} />}</DialogContent></Dialog>
+    <Dialog open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+      <DialogContent className="max-h-[90vh] p-0 gap-0 sm:max-w-2xl flex flex-col overflow-hidden [&>button]:z-30 [&>button]:text-white [&>button]:bg-black/60 [&>button]:hover:bg-black/90 [&>button]:rounded-full [&>button]:p-1.5">
+        <div className="overflow-y-auto flex-1 overscroll-contain">
+          {selected && <Detail job={selected} onEdit={() => { setEditing(selected); setSelected(null); }} onDelete={() => void removeJob(selected.id)} onPatch={(c) => void patchJob(selected.id,c)} />}
+        </div>
+      </DialogContent>
+    </Dialog>
     <Dialog open={!!editing} onOpenChange={(v) => { if (!v) setEditing(null); }}><DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-2xl"><DialogHeader><DialogTitle className="text-2xl">작업 수정</DialogTitle><DialogDescription>모델과 출력 조건을 수정합니다.</DialogDescription></DialogHeader>{editing && <JobForm initial={editing} saving={saving} onSave={saveJob} onCancel={() => setEditing(null)} />}</DialogContent></Dialog>
   </main>;
 }
@@ -236,25 +242,13 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
           </button>
           <div className="p-2 sm:p-2.5 bg-white/95 border-b border-slate-100">
             <div className="flex items-start justify-between gap-1">
-              <div className="min-w-0 flex-1 space-y-1">
+              <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-1 flex-wrap">
                   {job.priority === "urgent" && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-black text-red-600">긴급</span>}
                   {isCompleted && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700">완료</span>}
-                  <h4 className="truncate text-sm sm:text-base font-black text-slate-900" title={job.modelName}>{job.modelName}</h4>
+                  <h4 className="truncate text-sm sm:text-base font-black text-slate-900 leading-tight" title={job.modelName}>{job.modelName}</h4>
                 </div>
-
-                {job.fileName && (
-                  <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 border border-slate-200/90 min-w-0">
-                    <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide text-white">
-                      GCODE
-                    </span>
-                    <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800" title={`프린터 파일: ${job.fileName}`}>
-                      {job.fileName}
-                    </span>
-                  </div>
-                )}
-
-                <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">{job.customer ? `고객: ${job.customer}` : "고객 미지정"}</p>
+                <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs mt-0.5">{job.customer ? `고객: ${job.customer}` : "고객 미지정"}</p>
               </div>
 
               <div className="flex shrink-0 gap-0.5 ml-1 pt-0.5" onClick={event => event.stopPropagation()}>
@@ -262,6 +256,19 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
                 <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
               </div>
             </div>
+
+            {job.fileName && (
+              <div className="mt-2 rounded-lg bg-slate-100/90 p-2 border border-slate-200">
+                <div className="flex items-start gap-1.5">
+                  <span className="shrink-0 rounded bg-blue-600 px-1 py-0.5 text-[8px] font-black tracking-tight text-white leading-none mt-0.5">
+                    GCODE
+                  </span>
+                  <span className="font-mono text-xs sm:text-[13px] font-extrabold text-slate-800 break-all leading-snug" title={`프린터 파일: ${job.fileName}`}>
+                    {job.fileName}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="space-y-1.5 p-2 sm:p-2.5">
@@ -288,8 +295,8 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
       job.priority === "urgent" ? "border-l-[3px] border-l-red-500 sm:border-l-4" : "border-slate-200"
     }`}>
       <div className="p-2 sm:p-3">
-        <div className="mb-2 flex items-start gap-1.5 sm:mb-3 sm:gap-3">
-          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-md sm:h-12 sm:w-12 sm:rounded-lg ${
+        <div className="flex items-start gap-2 sm:gap-3">
+          <div className={`grid h-9 w-9 shrink-0 place-items-center rounded-md sm:h-11 sm:w-11 sm:rounded-lg ${
             isCompleted ? "bg-emerald-100 text-emerald-700" :
             isPrinting ? "bg-blue-100 text-blue-700" :
             job.material.includes("CF") ? "bg-zinc-800 text-zinc-100" :
@@ -299,39 +306,37 @@ function JobCard({job,first,last,onOpen,onStatus,onOperatorChange,onMove}:{job:J
             {isCompleted ? <Check className="h-5 w-5 sm:h-6 sm:w-6" /> : <Box className="h-5 w-5 sm:h-6 sm:w-6" />}
           </div>
           <div className="min-w-0 flex-1">
-            <div className="mb-1 flex items-center gap-1 sm:gap-1.5">
+            <div className="mb-0.5 flex items-center gap-1 sm:gap-1.5">
               {job.priority === "urgent" && <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-black text-red-600 sm:text-[11px]">긴급</span>}
               {job.priority === "low" && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500 sm:text-[11px]">낮음</span>}
               {isCompleted && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-black text-emerald-700 sm:text-[11px]">완료됨</span>}
             </div>
 
-            {/* 두 줄 명확 노출: 1줄 모델명(크게), 2줄 프린터 G-code 파일명(크게) */}
-            <div className="space-y-1 min-w-0">
-              <h3 className="truncate text-sm sm:text-base font-black text-slate-900 leading-tight" title={job.modelName}>
-                {job.modelName}
-              </h3>
-
-              {job.fileName ? (
-                <div className="flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-1 border border-slate-200/90 min-w-0">
-                  <span className="shrink-0 rounded bg-blue-600 px-1.5 py-0.5 text-[9px] sm:text-[10px] font-black tracking-wide text-white">
-                    GCODE
-                  </span>
-                  <span className="truncate font-mono text-xs sm:text-sm font-extrabold text-slate-800" title={`프린터 파일: ${job.fileName}`}>
-                    {job.fileName}
-                  </span>
-                </div>
-              ) : null}
-
-              <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs">
-                {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
-              </p>
-            </div>
+            <h3 className="truncate text-sm sm:text-base font-black text-slate-900 leading-tight" title={job.modelName}>
+              {job.modelName}
+            </h3>
+            <p className="truncate text-[11px] font-medium text-slate-500 sm:text-xs mt-0.5">
+              {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
+            </p>
           </div>
           <div className="flex shrink-0 gap-0.5" onClick={event => event.stopPropagation()}>
             <button type="button" aria-label="작업 위로 이동" disabled={first} onClick={() => onMove(-1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronUp className="h-4 w-4" /></button>
             <button type="button" aria-label="작업 아래로 이동" disabled={last} onClick={() => onMove(1)} className="rounded-md p-1 text-slate-500 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-30"><ChevronDown className="h-4 w-4" /></button>
           </div>
         </div>
+
+        {job.fileName ? (
+          <div className="mt-2.5 rounded-lg bg-slate-100/90 p-2 sm:p-2.5 border border-slate-200">
+            <div className="flex items-start gap-1.5">
+              <span className="shrink-0 rounded bg-blue-600 px-1 py-0.5 text-[8px] font-black tracking-tight text-white leading-none mt-0.5">
+                GCODE
+              </span>
+              <span className="font-mono text-xs sm:text-[13px] font-extrabold text-slate-800 break-all leading-snug" title={`프린터 파일: ${job.fileName}`}>
+                {job.fileName}
+              </span>
+            </div>
+          </div>
+        ) : null}
         <div className="grid grid-cols-3 gap-x-1 gap-y-1 border-t border-slate-100 pt-1.5 text-[10px] sm:gap-x-2 sm:gap-y-2 sm:pt-2.5 sm:text-xs">
           <Meta label="재료" value={`${job.material} · ${job.color}`} />
           <Meta label="수량" value={`${job.completedQuantity}/${job.quantity}개`} />
@@ -367,11 +372,11 @@ function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:
             <Printer className="h-4 w-4" />{job.printer} · {info.label}
           </div>
           <DialogTitle className="text-left text-2xl sm:text-3xl font-black text-white">{job.modelName}</DialogTitle>
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-white/10 p-2.5 border border-white/15">
-            <span className="shrink-0 rounded bg-blue-500 px-2 py-0.5 font-mono text-xs font-black text-white">
-              GCODE 파일
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-white/10 p-3 border border-white/15">
+            <span className="shrink-0 rounded bg-blue-500 px-1.5 py-0.5 font-mono text-[9px] font-black text-white leading-none mt-0.5">
+              GCODE
             </span>
-            <span className="font-mono text-sm sm:text-base font-bold text-white truncate">{job.fileName || "파일명 미입력"}</span>
+            <span className="font-mono text-sm sm:text-base font-bold text-white break-all leading-snug">{job.fileName || "파일명 미입력"}</span>
           </div>
           <DialogDescription className="text-left text-slate-400 mt-2 text-sm">
             {job.customer ? `고객: ${job.customer}` : "고객 미지정"}
@@ -425,7 +430,7 @@ function Detail({job,onEdit,onDelete,onPatch}:{job:Job;onEdit:()=>void;onDelete:
     </div>
   );
 }
-function Info({label,value}:{label:string;value:string}) { return <div><div className="mb-1 text-xs font-bold text-slate-400">{label}</div><div className="text-sm font-bold text-slate-800">{value}</div></div> }
+function Info({label,value}:{label:string;value:string}) { return <div><div className="mb-1 text-xs font-bold text-slate-400">{label}</div><div className="text-sm font-bold text-slate-800 break-all">{value}</div></div> }
 
 function JobForm({initial,saving,onSave,onCancel}:{initial:Omit<Job,"id">|Job;saving:boolean;onSave:(j:Omit<Job,"id">|Job)=>void;onCancel:()=>void}) {
   const [f, setF] = useState(initial);
