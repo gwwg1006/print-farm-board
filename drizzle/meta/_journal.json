@@ -15,6 +15,13 @@
       "when": 1788581444659,
       "tag": "0001_fat_penance",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1788638889682,
+      "tag": "0002_natural_cassandra_nova",
+      "breakpoints": true
     }
   ]
 }

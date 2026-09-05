@@ -1,0 +1,1 @@
+ALTER TABLE `jobs` ADD `operator` text DEFAULT '' NOT NULL;

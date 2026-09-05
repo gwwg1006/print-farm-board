@@ -15,6 +15,7 @@ export const jobs = sqliteTable("jobs", {
   estimatedTime: text("estimated_time").notNull().default(""),
   printSettings: text("print_settings").notNull().default("0.20 mm Standard"),
   customer: text("customer").notNull().default(""),
+  operator: text("operator").notNull().default(""),
   note: text("note").notNull().default(""),
   status: text("status").notNull().default("waiting"),
   priority: text("priority").notNull().default("normal"),
